@@ -20,7 +20,7 @@ const categories = [
 ];
 
 // State management
-let currentView = "categories"; // categories, lyricsList, detail
+let currentView = "categories";
 let activeCategory = null;
 let searchTerm = "";
 let selectedLyric = null;
@@ -34,6 +34,30 @@ function escapeHtml(str) {
         if (m === '>') return '&gt;';
         return m;
     });
+}
+
+// ---------- SHARE FUNCTION ----------
+async function shareLyric(title, text) {
+    const shareData = {
+        title: title,
+        text: text,
+    };
+    if (navigator.share) {
+        try {
+            await navigator.share(shareData);
+            console.log("Shared successfully");
+        } catch (err) {
+            console.log("Share cancelled or error:", err);
+        }
+    } else {
+        // Fallback: copy to clipboard
+        const fullText = `${title}\n\n${text}`;
+        navigator.clipboard.writeText(fullText).then(() => {
+            alert("📋 لیرکس کاپی ہو گئی۔ اب جہاں چاہیں پیسٹ کریں");
+        }).catch(() => {
+            alert("شیئرنگ سپورٹ نہیں ہے، براہِ کرم دستی طور پر کاپی کریں");
+        });
+    }
 }
 
 // Render categories home
@@ -59,7 +83,7 @@ function renderCategories() {
     });
 }
 
-// Render list of lyrics for a category (with search)
+// Render list of lyrics for a category
 function renderLyricsList() {
     const catObj = categories.find(c => c.key === activeCategory);
     const catDisplayName = catObj ? catObj.name : activeCategory;
@@ -100,7 +124,6 @@ function renderLyricsList() {
     html += `</div>`;
     mainContainer.innerHTML = html;
 
-    // Back button
     document.getElementById("backToCategoriesBtn")?.addEventListener("click", () => {
         currentView = "categories";
         activeCategory = null;
@@ -108,7 +131,6 @@ function renderLyricsList() {
         renderCategories();
     });
 
-    // Search input
     const searchInputEl = document.getElementById("searchInput");
     if (searchInputEl) {
         searchInputEl.addEventListener("input", (e) => {
@@ -117,7 +139,6 @@ function renderLyricsList() {
         });
     }
 
-    // Attach click to each lyric card -> open detail view
     document.querySelectorAll(".lyric-card").forEach(card => {
         card.addEventListener("click", () => {
             const id = parseInt(card.getAttribute("data-id"));
@@ -130,7 +151,7 @@ function renderLyricsList() {
     });
 }
 
-// Render full lyrics detail page (separate view)
+// Render detail view with SHARE BUTTON
 function renderDetailView() {
     if (!selectedLyric) {
         currentView = "categories";
@@ -139,7 +160,10 @@ function renderDetailView() {
     }
     const html = `
         <div class="top-bar">
-            <button class="back-btn" id="backFromDetailBtn"><i class="fas fa-arrow-right"></i> واپس</button>
+            <div class="actions">
+                <button class="back-btn" id="backFromDetailBtn"><i class="fas fa-arrow-right"></i> واپس</button>
+                <button class="share-btn" id="shareDetailBtn"><i class="fas fa-share-alt"></i> شیئر کریں</button>
+            </div>
         </div>
         <div class="detail-container">
             <div class="detail-title">${escapeHtml(selectedLyric.title)}</div>
@@ -148,9 +172,14 @@ function renderDetailView() {
         </div>
     `;
     mainContainer.innerHTML = html;
+    
     document.getElementById("backFromDetailBtn")?.addEventListener("click", () => {
         currentView = "lyricsList";
         renderLyricsList();
+    });
+    
+    document.getElementById("shareDetailBtn")?.addEventListener("click", () => {
+        shareLyric(selectedLyric.title, selectedLyric.fullLyrics);
     });
 }
 
