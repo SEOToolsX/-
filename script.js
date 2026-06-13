@@ -19,6 +19,31 @@ const categories = [
     { key: "Dua", name: "دعا", icon: "fas fa-hands-praying" }
 ];
 
+// ---------- Views Count ----------
+function getViews() {
+    const views = localStorage.getItem("lyricsViews");
+    return views ? JSON.parse(views) : {};
+}
+function saveViews(views) {
+    localStorage.setItem("lyricsViews", JSON.stringify(views));
+}
+function incrementView(lyricId) {
+    let views = getViews();
+    views[lyricId] = (views[lyricId] || 0) + 1;
+    saveViews(views);
+}
+function getMostViewed(limit = 5) {
+    const views = getViews();
+    const items = [];
+    for (let id in views) {
+        const lyric = lyricsData.find(l => l.id == id);
+        if (lyric) items.push({ ...lyric, count: views[id] });
+    }
+    items.sort((a,b) => b.count - a.count);
+    return items.slice(0, limit);
+}
+
+// ---------- Rest of the app ----------
 let currentView = "categories";
 let activeCategory = null;
 let searchTerm = "";
@@ -56,34 +81,17 @@ function escapeRegex(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// ---------- Share Function ----------
+// Share function (unchanged)
 async function shareLyric(lyric) {
     const shareText = `${lyric.title}\n${lyric.sub}\n\n${lyric.fullLyrics.substring(0, 500)}${lyric.fullLyrics.length > 500 ? '...' : ''}`;
-    const shareData = {
-        title: lyric.title,
-        text: shareText,
-    };
+    const shareData = { title: lyric.title, text: shareText };
     if (navigator.share) {
-        try {
-            await navigator.share(shareData);
-        } catch (err) {
-            if (err.name !== 'AbortError') {
-                copyToClipboard(shareText);
-            }
-        }
-    } else {
-        copyToClipboard(shareText);
-    }
+        try { await navigator.share(shareData); } catch (err) { if (err.name !== 'AbortError') copyToClipboard(shareText); }
+    } else { copyToClipboard(shareText); }
 }
-
 function copyToClipboard(text) {
-    navigator.clipboard.writeText(text).then(() => {
-        showToast("📋 کاپی ہو گئی! اب جہاں چاہیں پیسٹ کریں۔");
-    }).catch(() => {
-        showToast("❌ کاپی نہیں ہو سکی، براہ کرم دستی طور پر کاپی کریں۔");
-    });
+    navigator.clipboard.writeText(text).then(() => showToast("📋 کاپی ہو گئی!")).catch(() => showToast("❌ کاپی نہیں ہو سکی۔"));
 }
-
 function showToast(msg) {
     let toast = document.querySelector('.toast-msg');
     if (toast) toast.remove();
@@ -94,19 +102,43 @@ function showToast(msg) {
     setTimeout(() => toast.remove(), 2500);
 }
 
-// ---------- Views ----------
-function renderCategories() {
-    let html = `<div class="categories-grid">`;
-    categories.forEach(cat => {
+// ---------- Views rendering (most viewed) ----------
+function renderMostViewed() {
+    const mostViewed = getMostViewed(5);
+    if (mostViewed.length === 0) return '';
+    let html = `
+        <div class="trending-section">
+            <div class="trending-title"><i class="fas fa-fire"></i> سب سے زیادہ دیکھے گئے</div>
+            <div class="trending-scroll">
+    `;
+    mostViewed.forEach(item => {
         html += `
+            <div class="trending-card" data-id="${item.id}">
+                <div class="title">${escapeHtml(item.title)}</div>
+                <div class="views"><i class="fas fa-eye"></i> ${item.count}</div>
+            </div>
+        `;
+    });
+    html += `</div></div>`;
+    return html;
+}
+
+// Categories view (with most viewed on top)
+function renderCategories() {
+    let mostViewedHtml = renderMostViewed();
+    let categoriesHtml = `<div class="categories-grid">`;
+    categories.forEach(cat => {
+        categoriesHtml += `
             <div class="category-card" data-cat-key="${cat.key}">
                 <div class="category-icon"><i class="${cat.icon}"></i></div>
                 <div class="category-name">${cat.name}</div>
             </div>
         `;
     });
-    html += `</div>`;
-    dynamicContainer.innerHTML = html;
+    categoriesHtml += `</div>`;
+    dynamicContainer.innerHTML = mostViewedHtml + categoriesHtml;
+    
+    // attach category click
     document.querySelectorAll(".category-card").forEach(card => {
         card.addEventListener("click", () => {
             activeCategory = card.getAttribute("data-cat-key");
@@ -115,18 +147,29 @@ function renderCategories() {
             renderLyricsList();
         });
     });
+    // attach trending click
+    document.querySelectorAll(".trending-card").forEach(card => {
+        card.addEventListener("click", () => {
+            const id = parseInt(card.getAttribute("data-id"));
+            selectedLyric = lyricsData.find(l => l.id === id);
+            if (selectedLyric) {
+                currentView = "detail";
+                renderDetailView();
+            }
+        });
+    });
 }
 
+// Lyrics list (same as before)
 function renderLyricsList() {
     const catObj = categories.find(c => c.key === activeCategory);
     const catDisplayName = catObj ? catObj.name : activeCategory;
-    
     let html = `
         <div class="top-bar">
             <button class="back-btn" id="backToCategoriesBtn"><i class="fas fa-arrow-right"></i> تمام زمرہ جات</button>
             <div class="search-box">
                 <i class="fas fa-search"></i>
-                <input type="text" id="searchInput" placeholder="${catDisplayName} میں تلاش کریں... عنوان، کلام یا پیش نظر" value="${escapeHtml(searchTerm)}">
+                <input type="text" id="searchInput" placeholder="${catDisplayName} میں تلاش کریں..." value="${escapeHtml(searchTerm)}">
             </div>
         </div>
         <div id="lyricsListContainer" class="lyrics-list"></div>
@@ -136,23 +179,17 @@ function renderLyricsList() {
     const updateLyricsList = () => {
         const container = document.getElementById("lyricsListContainer");
         if (!container) return;
-        
         let filtered = lyricsData.filter(l => l.category === activeCategory && matchesSearch(l, searchTerm));
         if (filtered.length === 0) {
-            container.innerHTML = `<div class="no-results"><i class="fas fa-quran"></i> کوئی کلام نہیں ملا 😔<br><span style="font-size:0.8rem;">مکمل لفظ یا جزوی لفظ سے تلاش کریں</span></div>`;
+            container.innerHTML = `<div class="no-results"><i class="fas fa-quran"></i> کوئی کلام نہیں ملا 😔</div>`;
         } else {
             let cardsHtml = "";
             filtered.forEach(lyric => {
                 let previewText = searchTerm.trim() ? highlightText(lyric.preview, searchTerm) : escapeHtml(lyric.preview);
                 cardsHtml += `
                     <div class="lyric-card" data-id="${lyric.id}">
-                        <div class="card-title">
-                            <i class="fas fa-quran"></i>
-                            <span>${escapeHtml(lyric.title)}</span>
-                        </div>
-                        <div class="card-sub">
-                            <span><i class="fas fa-tag"></i> ${escapeHtml(lyric.sub)}</span>
-                        </div>
+                        <div class="card-title"><i class="fas fa-quran"></i><span>${escapeHtml(lyric.title)}</span></div>
+                        <div class="card-sub"><span><i class="fas fa-tag"></i> ${escapeHtml(lyric.sub)}</span></div>
                         <div class="preview-text">“${previewText}”</div>
                     </div>
                 `;
@@ -170,16 +207,13 @@ function renderLyricsList() {
             });
         }
     };
-    
     updateLyricsList();
-    
     document.getElementById("backToCategoriesBtn")?.addEventListener("click", () => {
         currentView = "categories";
         activeCategory = null;
         searchTerm = "";
         renderCategories();
     });
-    
     const searchInput = document.getElementById("searchInput");
     if (searchInput) {
         searchInput.addEventListener("input", (e) => {
@@ -189,12 +223,15 @@ function renderLyricsList() {
     }
 }
 
+// Detail view with increment view count
 function renderDetailView() {
     if (!selectedLyric) {
         currentView = "categories";
         renderCategories();
         return;
     }
+    // Increment view count for this lyric
+    incrementView(selectedLyric.id);
     const html = `
         <div class="top-bar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
             <button class="back-btn" id="backFromDetailBtn"><i class="fas fa-arrow-right"></i> واپس</button>
