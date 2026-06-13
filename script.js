@@ -19,7 +19,7 @@ const categories = [
     { key: "Dua", name: "دعا", icon: "fas fa-hands-praying" }
 ];
 
-// ---------- Views Count ----------
+// ---------- Views Count (with localStorage) ----------
 function getViews() {
     const views = localStorage.getItem("lyricsViews");
     return views ? JSON.parse(views) : {};
@@ -43,7 +43,33 @@ function getMostViewed(limit = 5) {
     return items.slice(0, limit);
 }
 
-// ---------- Rest of the app ----------
+// ---------- State Persistence (refresh ke baad bhi wahi view) ----------
+function saveAppState() {
+    const state = {
+        currentView,
+        activeCategory,
+        searchTerm,
+        selectedLyricId: selectedLyric ? selectedLyric.id : null
+    };
+    localStorage.setItem("appState", JSON.stringify(state));
+}
+function loadAppState() {
+    const saved = localStorage.getItem("appState");
+    if (!saved) return;
+    try {
+        const state = JSON.parse(saved);
+        currentView = state.currentView;
+        activeCategory = state.activeCategory;
+        searchTerm = state.searchTerm || "";
+        if (state.selectedLyricId) {
+            selectedLyric = lyricsData.find(l => l.id == state.selectedLyricId);
+        } else {
+            selectedLyric = null;
+        }
+    } catch(e) {}
+}
+
+// ---------- Helper Functions ----------
 let currentView = "categories";
 let activeCategory = null;
 let searchTerm = "";
@@ -76,12 +102,11 @@ function highlightText(text, term) {
     const regex = new RegExp(`(${escapeRegex(term)})`, 'gi');
     return escapeHtml(text).replace(regex, '<mark style="background:#ffe6b3; padding:0 2px; border-radius:4px;">$1</mark>');
 }
-
 function escapeRegex(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// Share function (unchanged)
+// Share function
 async function shareLyric(lyric) {
     const shareText = `${lyric.title}\n${lyric.sub}\n\n${lyric.fullLyrics.substring(0, 500)}${lyric.fullLyrics.length > 500 ? '...' : ''}`;
     const shareData = { title: lyric.title, text: shareText };
@@ -102,65 +127,58 @@ function showToast(msg) {
     setTimeout(() => toast.remove(), 2500);
 }
 
-// ---------- Views rendering (most viewed) ----------
+// ---------- Most Viewed Rendering (with empty message) ----------
 function renderMostViewed() {
     const mostViewed = getMostViewed(5);
-    if (mostViewed.length === 0) return '';
-    let html = `
-        <div class="trending-section">
-            <div class="trending-title"><i class="fas fa-fire"></i> سب سے زیادہ دیکھے گئے</div>
-            <div class="trending-scroll">
-    `;
-    mostViewed.forEach(item => {
-        html += `
-            <div class="trending-card" data-id="${item.id}">
-                <div class="title">${escapeHtml(item.title)}</div>
-                <div class="views"><i class="fas fa-eye"></i> ${item.count}</div>
+    if (mostViewed.length === 0) {
+        return `
+            <div class="trending-section">
+                <div class="trending-title"><i class="fas fa-fire"></i> سب سے زیادہ دیکھے گئے</div>
+                <div style="padding:0.5rem 0; font-size:0.8rem; color:#8aa08a;">✨ ابھی کوئی کلام نہیں دیکھا گیا۔ کوئی بھی کلام کھولیں، یہاں دکھے گا۔</div>
             </div>
         `;
+    }
+    let html = `<div class="trending-section"><div class="trending-title"><i class="fas fa-fire"></i> سب سے زیادہ دیکھے گئے</div><div class="trending-scroll">`;
+    mostViewed.forEach(item => {
+        html += `<div class="trending-card" data-id="${item.id}"><div class="title">${escapeHtml(item.title)}</div><div class="views"><i class="fas fa-eye"></i> ${item.count}</div></div>`;
     });
     html += `</div></div>`;
     return html;
 }
 
-// Categories view (with most viewed on top)
+// Categories View
 function renderCategories() {
-    let mostViewedHtml = renderMostViewed();
+    const mostViewedHtml = renderMostViewed();
     let categoriesHtml = `<div class="categories-grid">`;
     categories.forEach(cat => {
-        categoriesHtml += `
-            <div class="category-card" data-cat-key="${cat.key}">
-                <div class="category-icon"><i class="${cat.icon}"></i></div>
-                <div class="category-name">${cat.name}</div>
-            </div>
-        `;
+        categoriesHtml += `<div class="category-card" data-cat-key="${cat.key}"><div class="category-icon"><i class="${cat.icon}"></i></div><div class="category-name">${cat.name}</div></div>`;
     });
     categoriesHtml += `</div>`;
     dynamicContainer.innerHTML = mostViewedHtml + categoriesHtml;
     
-    // attach category click
     document.querySelectorAll(".category-card").forEach(card => {
         card.addEventListener("click", () => {
             activeCategory = card.getAttribute("data-cat-key");
             currentView = "lyricsList";
             searchTerm = "";
+            saveAppState();
             renderLyricsList();
         });
     });
-    // attach trending click
     document.querySelectorAll(".trending-card").forEach(card => {
         card.addEventListener("click", () => {
             const id = parseInt(card.getAttribute("data-id"));
             selectedLyric = lyricsData.find(l => l.id === id);
             if (selectedLyric) {
                 currentView = "detail";
+                saveAppState();
                 renderDetailView();
             }
         });
     });
 }
 
-// Lyrics list (same as before)
+// Lyrics List
 function renderLyricsList() {
     const catObj = categories.find(c => c.key === activeCategory);
     const catDisplayName = catObj ? catObj.name : activeCategory;
@@ -186,13 +204,7 @@ function renderLyricsList() {
             let cardsHtml = "";
             filtered.forEach(lyric => {
                 let previewText = searchTerm.trim() ? highlightText(lyric.preview, searchTerm) : escapeHtml(lyric.preview);
-                cardsHtml += `
-                    <div class="lyric-card" data-id="${lyric.id}">
-                        <div class="card-title"><i class="fas fa-quran"></i><span>${escapeHtml(lyric.title)}</span></div>
-                        <div class="card-sub"><span><i class="fas fa-tag"></i> ${escapeHtml(lyric.sub)}</span></div>
-                        <div class="preview-text">“${previewText}”</div>
-                    </div>
-                `;
+                cardsHtml += `<div class="lyric-card" data-id="${lyric.id}"><div class="card-title"><i class="fas fa-quran"></i><span>${escapeHtml(lyric.title)}</span></div><div class="card-sub"><span><i class="fas fa-tag"></i> ${escapeHtml(lyric.sub)}</span></div><div class="preview-text">“${previewText}”</div></div>`;
             });
             container.innerHTML = cardsHtml;
             document.querySelectorAll(".lyric-card").forEach(card => {
@@ -201,6 +213,7 @@ function renderLyricsList() {
                     selectedLyric = lyricsData.find(l => l.id === id);
                     if (selectedLyric) {
                         currentView = "detail";
+                        saveAppState();
                         renderDetailView();
                     }
                 });
@@ -208,30 +221,35 @@ function renderLyricsList() {
         }
     };
     updateLyricsList();
+    
     document.getElementById("backToCategoriesBtn")?.addEventListener("click", () => {
         currentView = "categories";
         activeCategory = null;
         searchTerm = "";
+        saveAppState();
         renderCategories();
     });
     const searchInput = document.getElementById("searchInput");
     if (searchInput) {
         searchInput.addEventListener("input", (e) => {
             searchTerm = e.target.value;
+            saveAppState();
             updateLyricsList();
         });
     }
 }
 
-// Detail view with increment view count
+// Detail View with increment
 function renderDetailView() {
     if (!selectedLyric) {
         currentView = "categories";
+        saveAppState();
         renderCategories();
         return;
     }
-    // Increment view count for this lyric
+    // Increment view count (only once per opening)
     incrementView(selectedLyric.id);
+    
     const html = `
         <div class="top-bar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
             <button class="back-btn" id="backFromDetailBtn"><i class="fas fa-arrow-right"></i> واپس</button>
@@ -246,6 +264,7 @@ function renderDetailView() {
     dynamicContainer.innerHTML = html;
     document.getElementById("backFromDetailBtn")?.addEventListener("click", () => {
         currentView = "lyricsList";
+        saveAppState();
         renderLyricsList();
     });
     document.getElementById("shareDetailBtn")?.addEventListener("click", () => {
@@ -253,5 +272,15 @@ function renderDetailView() {
     });
 }
 
-// Start
-renderCategories();
+// ---------- Initial Load: restore state or default ----------
+loadAppState();
+if (currentView === "categories") {
+    renderCategories();
+} else if (currentView === "lyricsList" && activeCategory) {
+    renderLyricsList();
+} else if (currentView === "detail" && selectedLyric) {
+    renderDetailView();
+} else {
+    currentView = "categories";
+    renderCategories();
+}
