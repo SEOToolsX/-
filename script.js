@@ -1,4 +1,4 @@
-// ---------- اردو ڈیٹا ----------
+// اردو ڈیٹا
 const lyricsData = [
     { id: 1, title: "تو ہی مالک", category: "Hamd", sub: "حمد", preview: "تو ہی مالک، تو ہی رب العزت...", fullLyrics: "تو ہی مالک، تو ہی رب العزت\nبخش دے ہم کو اپنی رحمت\nہر گناہوں سے پاک کر دے\nیا الٰہی مجھ کو راہ پہ چل دے" },
     { id: 2, title: "وحدانی تیری", category: "Hamd", sub: "حمد", preview: "وحدانی تیری جلوہ گر، کوئی نہیں تیرے سوا...", fullLyrics: "وحدانی تیری جلوہ گر، کوئی نہیں تیرے سوا\nہر ذرے پہ تیرا نام، تو ہی اول تو ہی دعا" },
@@ -19,7 +19,7 @@ const categories = [
     { key: "Dua", name: "دعا", icon: "fas fa-hands-praying" }
 ];
 
-// ---------- Views Count (with localStorage) ----------
+// ---------- Views Count ----------
 function getViews() {
     const views = localStorage.getItem("lyricsViews");
     return views ? JSON.parse(views) : {};
@@ -43,40 +43,32 @@ function getMostViewed(limit = 5) {
     return items.slice(0, limit);
 }
 
-// ---------- State Persistence (refresh ke baad bhi wahi view) ----------
-function saveAppState() {
-    const state = {
-        currentView,
-        activeCategory,
-        searchTerm,
-        selectedLyricId: selectedLyric ? selectedLyric.id : null
-    };
-    localStorage.setItem("appState", JSON.stringify(state));
-}
-function loadAppState() {
-    const saved = localStorage.getItem("appState");
-    if (!saved) return;
-    try {
-        const state = JSON.parse(saved);
-        currentView = state.currentView;
-        activeCategory = state.activeCategory;
-        searchTerm = state.searchTerm || "";
-        if (state.selectedLyricId) {
-            selectedLyric = lyricsData.find(l => l.id == state.selectedLyricId);
-        } else {
-            selectedLyric = null;
-        }
-    } catch(e) {}
-}
-
-// ---------- Helper Functions ----------
+// ---------- State Persistence ----------
 let currentView = "categories";
 let activeCategory = null;
 let searchTerm = "";
 let selectedLyric = null;
 
-const dynamicContainer = document.getElementById("dynamicContent");
+function saveState() {
+    localStorage.setItem("appState", JSON.stringify({
+        currentView, activeCategory, searchTerm,
+        selectedLyricId: selectedLyric ? selectedLyric.id : null
+    }));
+}
+function loadState() {
+    const saved = localStorage.getItem("appState");
+    if (!saved) return;
+    try {
+        const s = JSON.parse(saved);
+        currentView = s.currentView;
+        activeCategory = s.activeCategory;
+        searchTerm = s.searchTerm || "";
+        if (s.selectedLyricId) selectedLyric = lyricsData.find(l => l.id === s.selectedLyricId);
+        else selectedLyric = null;
+    } catch(e) {}
+}
 
+// Helper functions
 function escapeHtml(str) {
     return str.replace(/[&<>]/g, function(m) {
         if (m === '&') return '&amp;';
@@ -85,83 +77,66 @@ function escapeHtml(str) {
         return m;
     });
 }
-
 function matchesSearch(item, term) {
     if (!term.trim()) return true;
-    const lowerTerm = term.toLowerCase();
-    return (
-        item.title.toLowerCase().includes(lowerTerm) ||
-        item.sub.toLowerCase().includes(lowerTerm) ||
-        item.preview.toLowerCase().includes(lowerTerm) ||
-        item.fullLyrics.toLowerCase().includes(lowerTerm)
-    );
+    const lt = term.toLowerCase();
+    return item.title.toLowerCase().includes(lt) || item.sub.toLowerCase().includes(lt) ||
+           item.preview.toLowerCase().includes(lt) || item.fullLyrics.toLowerCase().includes(lt);
 }
-
 function highlightText(text, term) {
     if (!term.trim()) return escapeHtml(text);
-    const regex = new RegExp(`(${escapeRegex(term)})`, 'gi');
+    const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
     return escapeHtml(text).replace(regex, '<mark style="background:#ffe6b3; padding:0 2px; border-radius:4px;">$1</mark>');
 }
-function escapeRegex(str) {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-// Share function
 async function shareLyric(lyric) {
     const shareText = `${lyric.title}\n${lyric.sub}\n\n${lyric.fullLyrics.substring(0, 500)}${lyric.fullLyrics.length > 500 ? '...' : ''}`;
-    const shareData = { title: lyric.title, text: shareText };
     if (navigator.share) {
-        try { await navigator.share(shareData); } catch (err) { if (err.name !== 'AbortError') copyToClipboard(shareText); }
-    } else { copyToClipboard(shareText); }
+        try { await navigator.share({ title: lyric.title, text: shareText }); } 
+        catch(e) { if (e.name !== 'AbortError') copyToClipboard(shareText); }
+    } else copyToClipboard(shareText);
 }
 function copyToClipboard(text) {
     navigator.clipboard.writeText(text).then(() => showToast("📋 کاپی ہو گئی!")).catch(() => showToast("❌ کاپی نہیں ہو سکی۔"));
 }
 function showToast(msg) {
-    let toast = document.querySelector('.toast-msg');
-    if (toast) toast.remove();
-    toast = document.createElement('div');
-    toast.className = 'toast-msg';
-    toast.innerText = msg;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 2500);
+    let t = document.querySelector('.toast-msg');
+    if (t) t.remove();
+    t = document.createElement('div');
+    t.className = 'toast-msg';
+    t.innerText = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2500);
 }
 
-// ---------- Most Viewed Rendering (with empty message) ----------
+const container = document.getElementById("dynamicContent");
+
 function renderMostViewed() {
-    const mostViewed = getMostViewed(5);
-    if (mostViewed.length === 0) {
-        return `
-            <div class="trending-section">
-                <div class="trending-title"><i class="fas fa-fire"></i> سب سے زیادہ دیکھے گئے</div>
-                <div style="padding:0.5rem 0; font-size:0.8rem; color:#8aa08a;">✨ ابھی کوئی کلام نہیں دیکھا گیا۔ کوئی بھی کلام کھولیں، یہاں دکھے گا۔</div>
-            </div>
-        `;
+    const most = getMostViewed(5);
+    if (most.length === 0) {
+        return `<div class="trending-section"><div class="trending-title"><i class="fas fa-fire"></i> سب سے زیادہ دیکھے گئے</div><div style="padding:0.5rem 0; font-size:0.8rem; color:#8aa08a;">✨ ابھی کوئی کلام نہیں دیکھا گیا۔ کوئی بھی کلام کھولیں، یہاں دکھے گا۔</div></div>`;
     }
     let html = `<div class="trending-section"><div class="trending-title"><i class="fas fa-fire"></i> سب سے زیادہ دیکھے گئے</div><div class="trending-scroll">`;
-    mostViewed.forEach(item => {
+    most.forEach(item => {
         html += `<div class="trending-card" data-id="${item.id}"><div class="title">${escapeHtml(item.title)}</div><div class="views"><i class="fas fa-eye"></i> ${item.count}</div></div>`;
     });
     html += `</div></div>`;
     return html;
 }
 
-// Categories View
 function renderCategories() {
-    const mostViewedHtml = renderMostViewed();
-    let categoriesHtml = `<div class="categories-grid">`;
+    let html = renderMostViewed();
+    html += `<div class="categories-grid">`;
     categories.forEach(cat => {
-        categoriesHtml += `<div class="category-card" data-cat-key="${cat.key}"><div class="category-icon"><i class="${cat.icon}"></i></div><div class="category-name">${cat.name}</div></div>`;
+        html += `<div class="category-card" data-cat-key="${cat.key}"><div class="category-icon"><i class="${cat.icon}"></i></div><div class="category-name">${cat.name}</div></div>`;
     });
-    categoriesHtml += `</div>`;
-    dynamicContainer.innerHTML = mostViewedHtml + categoriesHtml;
-    
+    html += `</div>`;
+    container.innerHTML = html;
     document.querySelectorAll(".category-card").forEach(card => {
         card.addEventListener("click", () => {
             activeCategory = card.getAttribute("data-cat-key");
             currentView = "lyricsList";
             searchTerm = "";
-            saveAppState();
+            saveState();
             renderLyricsList();
         });
     });
@@ -171,85 +146,76 @@ function renderCategories() {
             selectedLyric = lyricsData.find(l => l.id === id);
             if (selectedLyric) {
                 currentView = "detail";
-                saveAppState();
+                saveState();
                 renderDetailView();
             }
         });
     });
 }
 
-// Lyrics List
 function renderLyricsList() {
     const catObj = categories.find(c => c.key === activeCategory);
-    const catDisplayName = catObj ? catObj.name : activeCategory;
+    const catName = catObj ? catObj.name : activeCategory;
     let html = `
         <div class="top-bar">
             <button class="back-btn" id="backToCategoriesBtn"><i class="fas fa-arrow-right"></i> تمام زمرہ جات</button>
-            <div class="search-box">
-                <i class="fas fa-search"></i>
-                <input type="text" id="searchInput" placeholder="${catDisplayName} میں تلاش کریں..." value="${escapeHtml(searchTerm)}">
-            </div>
+            <div class="search-box"><i class="fas fa-search"></i><input type="text" id="searchInput" placeholder="${catName} میں تلاش کریں..." value="${escapeHtml(searchTerm)}"></div>
         </div>
         <div id="lyricsListContainer" class="lyrics-list"></div>
     `;
-    dynamicContainer.innerHTML = html;
-    
-    const updateLyricsList = () => {
-        const container = document.getElementById("lyricsListContainer");
-        if (!container) return;
+    container.innerHTML = html;
+    const updateList = () => {
+        const listDiv = document.getElementById("lyricsListContainer");
+        if (!listDiv) return;
         let filtered = lyricsData.filter(l => l.category === activeCategory && matchesSearch(l, searchTerm));
         if (filtered.length === 0) {
-            container.innerHTML = `<div class="no-results"><i class="fas fa-quran"></i> کوئی کلام نہیں ملا 😔</div>`;
+            listDiv.innerHTML = `<div class="no-results"><i class="fas fa-quran"></i> کوئی کلام نہیں ملا 😔</div>`;
         } else {
-            let cardsHtml = "";
+            let cards = "";
             filtered.forEach(lyric => {
-                let previewText = searchTerm.trim() ? highlightText(lyric.preview, searchTerm) : escapeHtml(lyric.preview);
-                cardsHtml += `<div class="lyric-card" data-id="${lyric.id}"><div class="card-title"><i class="fas fa-quran"></i><span>${escapeHtml(lyric.title)}</span></div><div class="card-sub"><span><i class="fas fa-tag"></i> ${escapeHtml(lyric.sub)}</span></div><div class="preview-text">“${previewText}”</div></div>`;
+                let preview = searchTerm.trim() ? highlightText(lyric.preview, searchTerm) : escapeHtml(lyric.preview);
+                cards += `<div class="lyric-card" data-id="${lyric.id}"><div class="card-title"><i class="fas fa-quran"></i><span>${escapeHtml(lyric.title)}</span></div><div class="card-sub"><span><i class="fas fa-tag"></i> ${escapeHtml(lyric.sub)}</span></div><div class="preview-text">“${preview}”</div></div>`;
             });
-            container.innerHTML = cardsHtml;
+            listDiv.innerHTML = cards;
             document.querySelectorAll(".lyric-card").forEach(card => {
                 card.addEventListener("click", () => {
                     const id = parseInt(card.getAttribute("data-id"));
                     selectedLyric = lyricsData.find(l => l.id === id);
                     if (selectedLyric) {
                         currentView = "detail";
-                        saveAppState();
+                        saveState();
                         renderDetailView();
                     }
                 });
             });
         }
     };
-    updateLyricsList();
-    
+    updateList();
     document.getElementById("backToCategoriesBtn")?.addEventListener("click", () => {
         currentView = "categories";
         activeCategory = null;
         searchTerm = "";
-        saveAppState();
+        saveState();
         renderCategories();
     });
     const searchInput = document.getElementById("searchInput");
     if (searchInput) {
         searchInput.addEventListener("input", (e) => {
             searchTerm = e.target.value;
-            saveAppState();
-            updateLyricsList();
+            saveState();
+            updateList();
         });
     }
 }
 
-// Detail View with increment
 function renderDetailView() {
     if (!selectedLyric) {
         currentView = "categories";
-        saveAppState();
+        saveState();
         renderCategories();
         return;
     }
-    // Increment view count (only once per opening)
     incrementView(selectedLyric.id);
-    
     const html = `
         <div class="top-bar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
             <button class="back-btn" id="backFromDetailBtn"><i class="fas fa-arrow-right"></i> واپس</button>
@@ -261,10 +227,10 @@ function renderDetailView() {
             <div class="detail-content">${escapeHtml(selectedLyric.fullLyrics)}</div>
         </div>
     `;
-    dynamicContainer.innerHTML = html;
+    container.innerHTML = html;
     document.getElementById("backFromDetailBtn")?.addEventListener("click", () => {
         currentView = "lyricsList";
-        saveAppState();
+        saveState();
         renderLyricsList();
     });
     document.getElementById("shareDetailBtn")?.addEventListener("click", () => {
@@ -272,15 +238,9 @@ function renderDetailView() {
     });
 }
 
-// ---------- Initial Load: restore state or default ----------
-loadAppState();
-if (currentView === "categories") {
-    renderCategories();
-} else if (currentView === "lyricsList" && activeCategory) {
-    renderLyricsList();
-} else if (currentView === "detail" && selectedLyric) {
-    renderDetailView();
-} else {
-    currentView = "categories";
-    renderCategories();
-}
+// شروع
+loadState();
+if (currentView === "categories") renderCategories();
+else if (currentView === "lyricsList" && activeCategory) renderLyricsList();
+else if (currentView === "detail" && selectedLyric) renderDetailView();
+else { currentView = "categories"; renderCategories(); }
