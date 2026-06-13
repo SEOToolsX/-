@@ -19,12 +19,12 @@ const categories = [
     { key: "Dua", name: "دعا", icon: "fas fa-hands-praying" }
 ];
 
-let currentView = "categories";
+let currentView = "categories"; // categories, lyricsList, detail
 let activeCategory = null;
 let searchTerm = "";
 let selectedLyric = null;
 
-const mainContainer = document.getElementById("mainContent");
+const dynamicContainer = document.getElementById("dynamicContent");
 
 function escapeHtml(str) {
     return str.replace(/[&<>]/g, function(m) {
@@ -56,7 +56,7 @@ function escapeRegex(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// Render categories
+// ---------- Categories View ----------
 function renderCategories() {
     let html = `<div class="categories-grid">`;
     categories.forEach(cat => {
@@ -68,7 +68,7 @@ function renderCategories() {
         `;
     });
     html += `</div>`;
-    mainContainer.innerHTML = html;
+    dynamicContainer.innerHTML = html;
     document.querySelectorAll(".category-card").forEach(card => {
         card.addEventListener("click", () => {
             activeCategory = card.getAttribute("data-cat-key");
@@ -79,12 +79,11 @@ function renderCategories() {
     });
 }
 
-// Render lyrics list with smart search and FOCUS FIX
+// ---------- Lyrics List View (Search box stays persistent) ----------
 function renderLyricsList() {
+    // First, build the whole view with top-bar (search) and lyrics container
     const catObj = categories.find(c => c.key === activeCategory);
     const catDisplayName = catObj ? catObj.name : activeCategory;
-    
-    let filtered = lyricsData.filter(l => l.category === activeCategory && matchesSearch(l, searchTerm));
     
     let html = `
         <div class="top-bar">
@@ -94,36 +93,53 @@ function renderLyricsList() {
                 <input type="text" id="searchInput" placeholder="${catDisplayName} میں تلاش کریں... عنوان، کلام یا پیش نظر" value="${escapeHtml(searchTerm)}">
             </div>
         </div>
-        <div id="lyricsListContainer" class="lyrics-list">
+        <div id="lyricsListContainer" class="lyrics-list"></div>
     `;
-
-    if (filtered.length === 0) {
-        html += `<div class="no-results"><i class="fas fa-quran"></i> کوئی کلام نہیں ملا 😔<br><span style="font-size:0.8rem;">مکمل لفظ یا جزوی لفظ سے تلاش کریں</span></div>`;
-    } else {
-        filtered.forEach(lyric => {
-            let previewText = lyric.preview;
-            if (searchTerm.trim()) {
-                previewText = highlightText(lyric.preview, searchTerm);
-            } else {
-                previewText = escapeHtml(lyric.preview);
-            }
-            html += `
-                <div class="lyric-card" data-id="${lyric.id}">
-                    <div class="card-title">
-                        <i class="fas fa-quran"></i>
-                        <span>${escapeHtml(lyric.title)}</span>
+    dynamicContainer.innerHTML = html;
+    
+    // Function to update only the lyrics list (without re-creating search input)
+    const updateLyricsList = () => {
+        const container = document.getElementById("lyricsListContainer");
+        if (!container) return;
+        
+        let filtered = lyricsData.filter(l => l.category === activeCategory && matchesSearch(l, searchTerm));
+        if (filtered.length === 0) {
+            container.innerHTML = `<div class="no-results"><i class="fas fa-quran"></i> کوئی کلام نہیں ملا 😔<br><span style="font-size:0.8rem;">مکمل لفظ یا جزوی لفظ سے تلاش کریں</span></div>`;
+        } else {
+            let cardsHtml = "";
+            filtered.forEach(lyric => {
+                let previewText = searchTerm.trim() ? highlightText(lyric.preview, searchTerm) : escapeHtml(lyric.preview);
+                cardsHtml += `
+                    <div class="lyric-card" data-id="${lyric.id}">
+                        <div class="card-title">
+                            <i class="fas fa-quran"></i>
+                            <span>${escapeHtml(lyric.title)}</span>
+                        </div>
+                        <div class="card-sub">
+                            <span><i class="fas fa-tag"></i> ${escapeHtml(lyric.sub)}</span>
+                        </div>
+                        <div class="preview-text">“${previewText}”</div>
                     </div>
-                    <div class="card-sub">
-                        <span><i class="fas fa-tag"></i> ${escapeHtml(lyric.sub)}</span>
-                    </div>
-                    <div class="preview-text">“${previewText}”</div>
-                </div>
-            `;
-        });
-    }
-    html += `</div>`;
-    mainContainer.innerHTML = html;
-
+                `;
+            });
+            container.innerHTML = cardsHtml;
+            // attach click events to new cards
+            document.querySelectorAll(".lyric-card").forEach(card => {
+                card.addEventListener("click", () => {
+                    const id = parseInt(card.getAttribute("data-id"));
+                    selectedLyric = lyricsData.find(l => l.id === id);
+                    if (selectedLyric) {
+                        currentView = "detail";
+                        renderDetailView();
+                    }
+                });
+            });
+        }
+    };
+    
+    // Initial update
+    updateLyricsList();
+    
     // Back button event
     document.getElementById("backToCategoriesBtn")?.addEventListener("click", () => {
         currentView = "categories";
@@ -131,40 +147,19 @@ function renderLyricsList() {
         searchTerm = "";
         renderCategories();
     });
-
-    // Search input event with focus fix
-    const searchInputEl = document.getElementById("searchInput");
-    if (searchInputEl) {
-        // Remove any existing listener to avoid duplicates, but simple re-assign is fine
-        searchInputEl.addEventListener("input", (e) => {
+    
+    // Search input event - now only updates the list, does NOT re-render the whole top bar
+    const searchInput = document.getElementById("searchInput");
+    if (searchInput) {
+        // Remove existing listener to avoid duplicates, but we'll just set a new one
+        searchInput.addEventListener("input", (e) => {
             searchTerm = e.target.value;
-            renderLyricsList(); // Re-render
+            updateLyricsList(); // only updates the lyrics list container, search input remains untouched
         });
-        
-        // ***** FIX: Restore focus to the input after re-render *****
-        // Use setTimeout to ensure DOM is fully updated
-        setTimeout(() => {
-            searchInputEl.focus();
-            // Place cursor at the end of the text
-            const len = searchInputEl.value.length;
-            searchInputEl.setSelectionRange(len, len);
-        }, 10);
     }
-
-    // Attach click events to lyric cards
-    document.querySelectorAll(".lyric-card").forEach(card => {
-        card.addEventListener("click", () => {
-            const id = parseInt(card.getAttribute("data-id"));
-            selectedLyric = lyricsData.find(l => l.id === id);
-            if (selectedLyric) {
-                currentView = "detail";
-                renderDetailView();
-            }
-        });
-    });
 }
 
-// Detail view
+// ---------- Detail View ----------
 function renderDetailView() {
     if (!selectedLyric) {
         currentView = "categories";
@@ -181,7 +176,7 @@ function renderDetailView() {
             <div class="detail-content">${escapeHtml(selectedLyric.fullLyrics)}</div>
         </div>
     `;
-    mainContainer.innerHTML = html;
+    dynamicContainer.innerHTML = html;
     document.getElementById("backFromDetailBtn")?.addEventListener("click", () => {
         currentView = "lyricsList";
         renderLyricsList();
