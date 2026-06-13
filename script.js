@@ -19,7 +19,7 @@ const categories = [
     { key: "Dua", name: "دعا", icon: "fas fa-hands-praying" }
 ];
 
-let currentView = "categories"; // categories, lyricsList, detail
+let currentView = "categories";
 let activeCategory = null;
 let searchTerm = "";
 let selectedLyric = null;
@@ -56,7 +56,45 @@ function escapeRegex(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// ---------- Categories View ----------
+// ---------- Share Function ----------
+async function shareLyric(lyric) {
+    const shareText = `${lyric.title}\n${lyric.sub}\n\n${lyric.fullLyrics.substring(0, 500)}${lyric.fullLyrics.length > 500 ? '...' : ''}`;
+    const shareData = {
+        title: lyric.title,
+        text: shareText,
+    };
+    if (navigator.share) {
+        try {
+            await navigator.share(shareData);
+        } catch (err) {
+            if (err.name !== 'AbortError') {
+                copyToClipboard(shareText);
+            }
+        }
+    } else {
+        copyToClipboard(shareText);
+    }
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        showToast("📋 کاپی ہو گئی! اب جہاں چاہیں پیسٹ کریں۔");
+    }).catch(() => {
+        showToast("❌ کاپی نہیں ہو سکی، براہ کرم دستی طور پر کاپی کریں۔");
+    });
+}
+
+function showToast(msg) {
+    let toast = document.querySelector('.toast-msg');
+    if (toast) toast.remove();
+    toast = document.createElement('div');
+    toast.className = 'toast-msg';
+    toast.innerText = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2500);
+}
+
+// ---------- Views ----------
 function renderCategories() {
     let html = `<div class="categories-grid">`;
     categories.forEach(cat => {
@@ -79,9 +117,7 @@ function renderCategories() {
     });
 }
 
-// ---------- Lyrics List View (Search box stays persistent) ----------
 function renderLyricsList() {
-    // First, build the whole view with top-bar (search) and lyrics container
     const catObj = categories.find(c => c.key === activeCategory);
     const catDisplayName = catObj ? catObj.name : activeCategory;
     
@@ -97,7 +133,6 @@ function renderLyricsList() {
     `;
     dynamicContainer.innerHTML = html;
     
-    // Function to update only the lyrics list (without re-creating search input)
     const updateLyricsList = () => {
         const container = document.getElementById("lyricsListContainer");
         if (!container) return;
@@ -123,7 +158,6 @@ function renderLyricsList() {
                 `;
             });
             container.innerHTML = cardsHtml;
-            // attach click events to new cards
             document.querySelectorAll(".lyric-card").forEach(card => {
                 card.addEventListener("click", () => {
                     const id = parseInt(card.getAttribute("data-id"));
@@ -137,10 +171,8 @@ function renderLyricsList() {
         }
     };
     
-    // Initial update
     updateLyricsList();
     
-    // Back button event
     document.getElementById("backToCategoriesBtn")?.addEventListener("click", () => {
         currentView = "categories";
         activeCategory = null;
@@ -148,18 +180,15 @@ function renderLyricsList() {
         renderCategories();
     });
     
-    // Search input event - now only updates the list, does NOT re-render the whole top bar
     const searchInput = document.getElementById("searchInput");
     if (searchInput) {
-        // Remove existing listener to avoid duplicates, but we'll just set a new one
         searchInput.addEventListener("input", (e) => {
             searchTerm = e.target.value;
-            updateLyricsList(); // only updates the lyrics list container, search input remains untouched
+            updateLyricsList();
         });
     }
 }
 
-// ---------- Detail View ----------
 function renderDetailView() {
     if (!selectedLyric) {
         currentView = "categories";
@@ -167,8 +196,9 @@ function renderDetailView() {
         return;
     }
     const html = `
-        <div class="top-bar">
+        <div class="top-bar" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
             <button class="back-btn" id="backFromDetailBtn"><i class="fas fa-arrow-right"></i> واپس</button>
+            <button class="share-btn" id="shareDetailBtn"><i class="fas fa-share-alt"></i> شیئر کریں</button>
         </div>
         <div class="detail-container">
             <div class="detail-title">${escapeHtml(selectedLyric.title)}</div>
@@ -180,6 +210,9 @@ function renderDetailView() {
     document.getElementById("backFromDetailBtn")?.addEventListener("click", () => {
         currentView = "lyricsList";
         renderLyricsList();
+    });
+    document.getElementById("shareDetailBtn")?.addEventListener("click", () => {
+        shareLyric(selectedLyric);
     });
 }
 
