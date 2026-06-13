@@ -152,36 +152,34 @@ function renderLyricsList() {
 }
 
 // Render detail view with SHARE BUTTON
-function renderDetailView() {
-    if (!selectedLyric) {
-        currentView = "categories";
-        renderCategories();
-        return;
+// ---------- SHARE FUNCTION - STRONG FALLBACK ----------
+async function shareLyric(title, text) {
+    const fullText = `${title}\n\n${text}`;
+    // Try native share first
+    if (navigator.share) {
+        try {
+            await navigator.share({
+                title: title,
+                text: fullText,
+            });
+            return;
+        } catch (err) {
+            console.log("Share error or cancelled:", err);
+            // Fall through to clipboard
+        }
     }
-    const html = `
-        <div class="top-bar">
-            <div class="actions">
-                <button class="back-btn" id="backFromDetailBtn"><i class="fas fa-arrow-right"></i> واپس</button>
-                <button class="share-btn" id="shareDetailBtn"><i class="fas fa-share-alt"></i> شیئر کریں</button>
-            </div>
-        </div>
-        <div class="detail-container">
-            <div class="detail-title">${escapeHtml(selectedLyric.title)}</div>
-            <div class="detail-sub">${escapeHtml(selectedLyric.sub)}</div>
-            <div class="detail-content">${escapeHtml(selectedLyric.fullLyrics)}</div>
-        </div>
-    `;
-    mainContainer.innerHTML = html;
-    
-    document.getElementById("backFromDetailBtn")?.addEventListener("click", () => {
-        currentView = "lyricsList";
-        renderLyricsList();
-    });
-    
-    document.getElementById("shareDetailBtn")?.addEventListener("click", () => {
-        shareLyric(selectedLyric.title, selectedLyric.fullLyrics);
-    });
+    // Fallback: copy to clipboard
+    try {
+        await navigator.clipboard.writeText(fullText);
+        alert("✅ لیرکس کاپی ہو گئی! اب آپ اسے کہیں بھی پیسٹ کریں۔");
+    } catch (err) {
+        // Old method for older browsers
+        const textarea = document.createElement("textarea");
+        textarea.value = fullText;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textarea);
+        alert("📋 لیرکس کاپی ہو گئی (پرانا طریقہ)");
+    }
 }
-
-// Initial render
-renderCategories();
