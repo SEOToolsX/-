@@ -20,7 +20,7 @@ const categories = [
 ];
 
 // State management
-let currentView = "categories";
+let currentView = "categories"; // categories, lyricsList, detail
 let activeCategory = null;
 let searchTerm = "";
 let selectedLyric = null;
@@ -36,28 +36,32 @@ function escapeHtml(str) {
     });
 }
 
-// ---------- SHARE FUNCTION ----------
-async function shareLyric(title, text) {
-    const shareData = {
-        title: title,
-        text: text,
-    };
-    if (navigator.share) {
-        try {
-            await navigator.share(shareData);
-            console.log("Shared successfully");
-        } catch (err) {
-            console.log("Share cancelled or error:", err);
-        }
-    } else {
-        // Fallback: copy to clipboard
-        const fullText = `${title}\n\n${text}`;
-        navigator.clipboard.writeText(fullText).then(() => {
-            alert("📋 لیرکس کاپی ہو گئی۔ اب جہاں چاہیں پیسٹ کریں");
-        }).catch(() => {
-            alert("شیئرنگ سپورٹ نہیں ہے، براہِ کرم دستی طور پر کاپی کریں");
-        });
-    }
+// ---------- SMART SEARCH FUNCTION ----------
+// Returns true if search term matches any field (title, sub, preview, fullLyrics)
+function matchesSearch(item, term) {
+    if (!term.trim()) return true;
+    const lowerTerm = term.toLowerCase();
+    return (
+        item.title.toLowerCase().includes(lowerTerm) ||
+        item.sub.toLowerCase().includes(lowerTerm) ||
+        item.preview.toLowerCase().includes(lowerTerm) ||
+        item.fullLyrics.toLowerCase().includes(lowerTerm)
+    );
+}
+
+// Optional: Highlight matching words in preview (simple)
+function highlightText(text, term) {
+    if (!term.trim()) return escapeHtml(text);
+    const lowerTerm = term.toLowerCase();
+    const lowerText = text.toLowerCase();
+    if (!lowerText.includes(lowerTerm)) return escapeHtml(text);
+    
+    const regex = new RegExp(`(${escapeRegex(term)})`, 'gi');
+    return escapeHtml(text).replace(regex, '<mark style="background:#ffe6b3; padding:0 2px; border-radius:4px;">$1</mark>');
+}
+
+function escapeRegex(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 // Render categories home
@@ -83,30 +87,36 @@ function renderCategories() {
     });
 }
 
-// Render list of lyrics for a category
+// Render list of lyrics for a category (with smart search)
 function renderLyricsList() {
     const catObj = categories.find(c => c.key === activeCategory);
     const catDisplayName = catObj ? catObj.name : activeCategory;
-    let filtered = lyricsData.filter(l => l.category === activeCategory);
-    if (searchTerm.trim() !== "") {
-        filtered = filtered.filter(l => l.title.toLowerCase().includes(searchTerm.toLowerCase()));
-    }
-
+    
+    // Smart filtering: uses matchesSearch function
+    let filtered = lyricsData.filter(l => l.category === activeCategory && matchesSearch(l, searchTerm));
+    
     let html = `
         <div class="top-bar">
             <button class="back-btn" id="backToCategoriesBtn"><i class="fas fa-arrow-right"></i> تمام زمرہ جات</button>
             <div class="search-box">
                 <i class="fas fa-search"></i>
-                <input type="text" id="searchInput" placeholder="${catDisplayName} میں تلاش کریں..." value="${escapeHtml(searchTerm)}">
+                <input type="text" id="searchInput" placeholder="${catDisplayName} میں تلاش کریں... عنوان، کلام یا پیش نظر" value="${escapeHtml(searchTerm)}">
             </div>
         </div>
         <div id="lyricsListContainer" class="lyrics-list">
     `;
 
     if (filtered.length === 0) {
-        html += `<div class="no-results"><i class="fas fa-quran"></i> کوئی کلام نہیں ملا 😔</div>`;
+        html += `<div class="no-results"><i class="fas fa-quran"></i> کوئی کلام نہیں ملا 😔<br><span style="font-size:0.8rem;">مکمل لفظ یا جزوی لفظ سے تلاش کریں</span></div>`;
     } else {
         filtered.forEach(lyric => {
+            // Highlight preview if search term matches
+            let previewText = lyric.preview;
+            if (searchTerm.trim()) {
+                previewText = highlightText(lyric.preview, searchTerm);
+            } else {
+                previewText = escapeHtml(lyric.preview);
+            }
             html += `
                 <div class="lyric-card" data-id="${lyric.id}">
                     <div class="card-title">
@@ -116,7 +126,7 @@ function renderLyricsList() {
                     <div class="card-sub">
                         <span><i class="fas fa-tag"></i> ${escapeHtml(lyric.sub)}</span>
                     </div>
-                    <div class="preview-text">“${escapeHtml(lyric.preview)}”</div>
+                    <div class="preview-text">“${previewText}”</div>
                 </div>
             `;
         });
@@ -124,6 +134,7 @@ function renderLyricsList() {
     html += `</div>`;
     mainContainer.innerHTML = html;
 
+    // Back button
     document.getElementById("backToCategoriesBtn")?.addEventListener("click", () => {
         currentView = "categories";
         activeCategory = null;
@@ -131,14 +142,16 @@ function renderLyricsList() {
         renderCategories();
     });
 
+    // Search input event
     const searchInputEl = document.getElementById("searchInput");
     if (searchInputEl) {
         searchInputEl.addEventListener("input", (e) => {
             searchTerm = e.target.value;
-            renderLyricsList();
+            renderLyricsList(); // re-render with new search term
         });
     }
 
+    // Attach click to each lyric card -> open detail view
     document.querySelectorAll(".lyric-card").forEach(card => {
         card.addEventListener("click", () => {
             const id = parseInt(card.getAttribute("data-id"));
@@ -151,35 +164,29 @@ function renderLyricsList() {
     });
 }
 
-// Render detail view with SHARE BUTTON
-// ---------- SHARE FUNCTION - STRONG FALLBACK ----------
-async function shareLyric(title, text) {
-    const fullText = `${title}\n\n${text}`;
-    // Try native share first
-    if (navigator.share) {
-        try {
-            await navigator.share({
-                title: title,
-                text: fullText,
-            });
-            return;
-        } catch (err) {
-            console.log("Share error or cancelled:", err);
-            // Fall through to clipboard
-        }
+// Render full lyrics detail page (separate view)
+function renderDetailView() {
+    if (!selectedLyric) {
+        currentView = "categories";
+        renderCategories();
+        return;
     }
-    // Fallback: copy to clipboard
-    try {
-        await navigator.clipboard.writeText(fullText);
-        alert("✅ لیرکس کاپی ہو گئی! اب آپ اسے کہیں بھی پیسٹ کریں۔");
-    } catch (err) {
-        // Old method for older browsers
-        const textarea = document.createElement("textarea");
-        textarea.value = fullText;
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textarea);
-        alert("📋 لیرکس کاپی ہو گئی (پرانا طریقہ)");
-    }
+    const html = `
+        <div class="top-bar">
+            <button class="back-btn" id="backFromDetailBtn"><i class="fas fa-arrow-right"></i> واپس</button>
+        </div>
+        <div class="detail-container">
+            <div class="detail-title">${escapeHtml(selectedLyric.title)}</div>
+            <div class="detail-sub">${escapeHtml(selectedLyric.sub)}</div>
+            <div class="detail-content">${escapeHtml(selectedLyric.fullLyrics)}</div>
+        </div>
+    `;
+    mainContainer.innerHTML = html;
+    document.getElementById("backFromDetailBtn")?.addEventListener("click", () => {
+        currentView = "lyricsList";
+        renderLyricsList();
+    });
 }
+
+// Initial render
+renderCategories();
