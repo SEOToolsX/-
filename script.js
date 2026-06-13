@@ -1,4 +1,4 @@
-// ---------- اردو ڈیٹا (آپ اپنی لیرکس یہاں لکھیں) ----------
+// ---------- اردو ڈیٹا ----------
 const lyricsData = [
     { id: 1, title: "تو ہی مالک", category: "Hamd", sub: "حمد", preview: "تو ہی مالک، تو ہی رب العزت...", fullLyrics: "تو ہی مالک، تو ہی رب العزت\nبخش دے ہم کو اپنی رحمت\nہر گناہوں سے پاک کر دے\nیا الٰہی مجھ کو راہ پہ چل دے" },
     { id: 2, title: "وحدانی تیری", category: "Hamd", sub: "حمد", preview: "وحدانی تیری جلوہ گر، کوئی نہیں تیرے سوا...", fullLyrics: "وحدانی تیری جلوہ گر، کوئی نہیں تیرے سوا\nہر ذرے پہ تیرا نام، تو ہی اول تو ہی دعا" },
@@ -19,8 +19,7 @@ const categories = [
     { key: "Dua", name: "دعا", icon: "fas fa-hands-praying" }
 ];
 
-// State management
-let currentView = "categories"; // categories, lyricsList, detail
+let currentView = "categories";
 let activeCategory = null;
 let searchTerm = "";
 let selectedLyric = null;
@@ -36,8 +35,6 @@ function escapeHtml(str) {
     });
 }
 
-// ---------- SMART SEARCH FUNCTION ----------
-// Returns true if search term matches any field (title, sub, preview, fullLyrics)
 function matchesSearch(item, term) {
     if (!term.trim()) return true;
     const lowerTerm = term.toLowerCase();
@@ -49,13 +46,8 @@ function matchesSearch(item, term) {
     );
 }
 
-// Optional: Highlight matching words in preview (simple)
 function highlightText(text, term) {
     if (!term.trim()) return escapeHtml(text);
-    const lowerTerm = term.toLowerCase();
-    const lowerText = text.toLowerCase();
-    if (!lowerText.includes(lowerTerm)) return escapeHtml(text);
-    
     const regex = new RegExp(`(${escapeRegex(term)})`, 'gi');
     return escapeHtml(text).replace(regex, '<mark style="background:#ffe6b3; padding:0 2px; border-radius:4px;">$1</mark>');
 }
@@ -64,7 +56,7 @@ function escapeRegex(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// Render categories home
+// Render categories
 function renderCategories() {
     let html = `<div class="categories-grid">`;
     categories.forEach(cat => {
@@ -87,12 +79,11 @@ function renderCategories() {
     });
 }
 
-// Render list of lyrics for a category (with smart search)
+// Render lyrics list with smart search and FOCUS FIX
 function renderLyricsList() {
     const catObj = categories.find(c => c.key === activeCategory);
     const catDisplayName = catObj ? catObj.name : activeCategory;
     
-    // Smart filtering: uses matchesSearch function
     let filtered = lyricsData.filter(l => l.category === activeCategory && matchesSearch(l, searchTerm));
     
     let html = `
@@ -110,7 +101,6 @@ function renderLyricsList() {
         html += `<div class="no-results"><i class="fas fa-quran"></i> کوئی کلام نہیں ملا 😔<br><span style="font-size:0.8rem;">مکمل لفظ یا جزوی لفظ سے تلاش کریں</span></div>`;
     } else {
         filtered.forEach(lyric => {
-            // Highlight preview if search term matches
             let previewText = lyric.preview;
             if (searchTerm.trim()) {
                 previewText = highlightText(lyric.preview, searchTerm);
@@ -134,7 +124,7 @@ function renderLyricsList() {
     html += `</div>`;
     mainContainer.innerHTML = html;
 
-    // Back button
+    // Back button event
     document.getElementById("backToCategoriesBtn")?.addEventListener("click", () => {
         currentView = "categories";
         activeCategory = null;
@@ -142,16 +132,26 @@ function renderLyricsList() {
         renderCategories();
     });
 
-    // Search input event
+    // Search input event with focus fix
     const searchInputEl = document.getElementById("searchInput");
     if (searchInputEl) {
+        // Remove any existing listener to avoid duplicates, but simple re-assign is fine
         searchInputEl.addEventListener("input", (e) => {
             searchTerm = e.target.value;
-            renderLyricsList(); // re-render with new search term
+            renderLyricsList(); // Re-render
         });
+        
+        // ***** FIX: Restore focus to the input after re-render *****
+        // Use setTimeout to ensure DOM is fully updated
+        setTimeout(() => {
+            searchInputEl.focus();
+            // Place cursor at the end of the text
+            const len = searchInputEl.value.length;
+            searchInputEl.setSelectionRange(len, len);
+        }, 10);
     }
 
-    // Attach click to each lyric card -> open detail view
+    // Attach click events to lyric cards
     document.querySelectorAll(".lyric-card").forEach(card => {
         card.addEventListener("click", () => {
             const id = parseInt(card.getAttribute("data-id"));
@@ -164,7 +164,7 @@ function renderLyricsList() {
     });
 }
 
-// Render full lyrics detail page (separate view)
+// Detail view
 function renderDetailView() {
     if (!selectedLyric) {
         currentView = "categories";
@@ -188,5 +188,5 @@ function renderDetailView() {
     });
 }
 
-// Initial render
+// Start
 renderCategories();
