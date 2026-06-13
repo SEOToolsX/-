@@ -1,3 +1,11 @@
+/* 
+    Islamic Lyrics Website - Corrected CSS File
+    This file now includes the proper Google Fonts link for Noto Nastaliq Urdu.
+*/
+
+/* Import the correct Google Fonts stylesheet for Urdu */
+@import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap');
+
 * {
     margin: 0;
     padding: 0;
@@ -5,16 +13,14 @@
 }
 
 body {
+    /* Apply the font to the entire body */
     font-family: 'Noto Nastaliq Urdu', 'Inter', sans-serif;
     background: #f8faf7;
     color: #1e2a1e;
     line-height: 1.6;
     padding: 1rem;
-    direction: rtl;
+    direction: rtl; /* Right-to-left text for Urdu */
 }
-
-/* Google Font for Urdu */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap');
 
 .app-container {
     max-width: 700px;
