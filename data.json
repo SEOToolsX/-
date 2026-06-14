@@ -1,0 +1,12 @@
+{
+  "categories": ["حمد", "نعت", "منقبت", "سلام", "دعا"],
+  "items": [
+    { "id": 1, "title": "تیری رحمت", "category": "حمد", "folder": "hamd", "file": "teri-rehmat.html" },
+    { "id": 2, "title": "اللہ ہو", "category": "حمد", "folder": "hamd", "file": "allah-hoo.html" },
+    { "id": 3, "title": "طیبہ کے جانو", "category": "نعت", "folder": "naat", "file": "taiba-ke-jaanoo.html" },
+    { "id": 4, "title": "مدینہ", "category": "نعت", "folder": "naat", "file": "madina.html" },
+    { "id": 5, "title": "علی علی", "category": "منقبت", "folder": "manqabat", "file": "ali-ali.html" },
+    { "id": 6, "title": "سلام یا حسین", "category": "سلام", "folder": "salam", "file": "salam-ya-hussain.html" },
+    { "id": 7, "title": "دعائے قنوت", "category": "دعا", "folder": "dua", "file": "dua-e-qunoot.html" }
+  ]
+}
