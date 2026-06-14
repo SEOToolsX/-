@@ -1,23 +1,470 @@
 <!DOCTYPE html>
-<html lang="ur">
+<html lang="ur" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>اسلامی نعتیں اور حمد | Islamic Lyrics</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>چمنِ طیبہ - آسان انتظام</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Nastaliq Urdu', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f5f0;
+            direction: rtl;
+            padding-bottom: 75px;
+        }
+
+        .app-container {
+            max-width: 550px;
+            margin: 0 auto;
+            background: #fffdf9;
+            min-height: 100vh;
+            box-shadow: 0 0 25px rgba(0, 0, 0, 0.05);
+            border-radius: 0 0 28px 28px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e4a2a, #0e3a1e);
+            padding: 1.4rem 1.2rem 1.6rem;
+            border-radius: 0 0 28px 28px;
+            color: white;
+        }
+
+        .app-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .app-title i {
+            color: #ffd966;
+        }
+
+        .tagline {
+            font-size: 0.8rem;
+            border-right: 3px solid #ffd966;
+            padding-right: 10px;
+            margin-top: 6px;
+        }
+
+        .search-wrapper {
+            margin-top: 18px;
+            position: relative;
+        }
+
+        .search-wrapper i {
+            position: absolute;
+            right: 15px;
+            top: 14px;
+            color: #7a6a5a;
+        }
+
+        #searchInput {
+            width: 100%;
+            padding: 13px 40px 13px 18px;
+            border: none;
+            border-radius: 60px;
+            font-family: inherit;
+            background: #fffdf5;
+            border: 1px solid #e2d9ce;
+            font-size: 1rem;
+        }
+
+        #searchInput:focus {
+            outline: none;
+            border-color: #2b5e2f;
+        }
+
+        .filter-chip {
+            padding: 12px 16px 6px;
+        }
+
+        .active-filter-badge {
+            background: #e8e0d3;
+            padding: 6px 14px;
+            border-radius: 40px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+
+        .clear-filter {
+            background: none;
+            border: none;
+            color: #aa7c58;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            padding: 0 18px 10px;
+            border-bottom: 2px solid #f0e2cf;
+            margin: 20px 0 12px;
+            color: #2b5e2f;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 14px;
+            padding: 8px 16px 20px;
+        }
+
+        .category-card {
+            background: white;
+            border-radius: 28px;
+            padding: 12px 6px;
+            text-align: center;
+            cursor: pointer;
+            border: 1px solid #f0e2d0;
+            transition: 0.2s;
+        }
+
+        .category-card:hover {
+            transform: translateY(-3px);
+            border-color: #cfb284;
+        }
+
+        .category-icon {
+            font-size: 2rem;
+            color: #2b5e2f;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .category-name {
+            font-weight: 600;
+        }
+
+        .items-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            padding: 8px 16px 28px;
+        }
+
+        .item-card {
+            background: white;
+            border-radius: 24px;
+            padding: 12px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid #f3ebdf;
+        }
+
+        .item-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .item-category-badge {
+            background: #f0e7db;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+        }
+
+        .read-link {
+            background: #fef2e6;
+            border-radius: 40px;
+            padding: 8px 14px;
+            text-decoration: none;
+            color: #2b5e2f;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: 0.2s;
+        }
+
+        .read-link:hover {
+            background: #2b5e2f;
+            color: white;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #8f7a64;
+        }
+
+        .bottom-tabs {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            max-width: 550px;
+            margin: 0 auto;
+            background: #ffffffef;
+            backdrop-filter: blur(12px);
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 12px 18px;
+            border-top: 1px solid #e2d6c8;
+            z-index: 100;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            font-family: inherit;
+            font-size: 0.75rem;
+            color: #7a6a5a;
+            cursor: pointer;
+            padding: 6px 16px;
+            border-radius: 40px;
+        }
+
+        .tab-btn i {
+            font-size: 1.3rem;
+        }
+
+        .tab-btn.active {
+            color: #2b5e2f;
+            background: #eef4e6;
+        }
+
+        .panel {
+            display: none;
+        }
+
+        .panel.active-panel {
+            display: block;
+        }
+
+        .note-text {
+            font-size: 0.75rem;
+            padding: 0 18px 10px;
+            color: #aa8e6e;
+        }
+    </style>
 </head>
 <body>
-<div class="app-container" id="app">
-    <div class="app-header">
-        <h1><i class="fas fa-mosque"></i> اسلامی نعتیں اور حمد</h1>
-        <p>حمد • نعت • منقبت • نظم • دعا</p>
+<div class="app-container">
+    <div class="header">
+        <div class="app-title"><i class="fas fa-mosque"></i><span>چمنِ طیبہ</span></div>
+        <div class="tagline">حمد، نعت، منقبت، سلام، دعا</div>
+        <div class="search-wrapper">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchInput" placeholder="تلاش کریں... (مثلاً: تیری رحمت)" autocomplete="off">
+        </div>
     </div>
-    <div id="dynamicContent"></div>
-    <div class="footer-note">
-        <i class="fas fa-hand-sparkles"></i> زمرہ منتخب کریں، پھر کلام پڑھنے کے لیے کلک کریں
+    <div class="filter-chip" id="filterChipArea"></div>
+
+    <div id="homePanel" class="panel active-panel">
+        <div class="section-title"><i class="fas fa-layer-group"></i> انواعِ کلام</div>
+        <div id="categoriesContainerHome" class="categories-grid"></div>
+        <div class="section-title"><i class="fas fa-heading"></i> مشہور کلام</div>
+        <div id="itemsContainerHome" class="items-grid"></div>
+    </div>
+    <div id="categoriesPanel" class="panel">
+        <div class="section-title"><i class="fas fa-th-large"></i> تمام اقسام</div>
+        <div id="categoriesFullContainer" class="categories-grid"></div>
+        <div class="note-text">✧ کسی بھی قسم پر ٹیپ کریں، ہوم پیج پر فلٹر ہو جائے گا ✧</div>
+    </div>
+    <div id="searchPanel" class="panel">
+        <div class="section-title"><i class="fas fa-filter"></i> نتائج تلاش</div>
+        <div id="searchResultsContainer" class="items-grid"></div>
+        <div class="note-text">🔍 اوپر سرچ باکس میں کوئی لفظ لکھیں، فوری نتائج</div>
+    </div>
+
+    <div class="bottom-tabs">
+        <button class="tab-btn active" data-tab="home"><i class="fas fa-home"></i><span>ہوم</span></button>
+        <button class="tab-btn" data-tab="categories"><i class="fas fa-bookmark"></i><span>اقسام</span></button>
+        <button class="tab-btn" data-tab="search"><i class="fas fa-search"></i><span>تلاش</span></button>
     </div>
 </div>
-<script src="script.js"></script>
+
+<script>
+    // ---------- یہاں کچھ تبدیل کرنے کی ضرورت نہیں، صرف data.json میں تبدیلی کریں ----------
+    let appData = { categories: [], items: [] };
+    let activeTab = "home";
+    let searchQuery = "";
+    let activeCategoryFilter = null;
+
+    // DOM elements
+    const searchInput = document.getElementById("searchInput");
+    const filterChipArea = document.getElementById("filterChipArea");
+    const homePanel = document.getElementById("homePanel");
+    const categoriesPanel = document.getElementById("categoriesPanel");
+    const searchPanel = document.getElementById("searchPanel");
+    const categoriesContainerHome = document.getElementById("categoriesContainerHome");
+    const itemsContainerHome = document.getElementById("itemsContainerHome");
+    const categoriesFullContainer = document.getElementById("categoriesFullContainer");
+    const searchResultsContainer = document.getElementById("searchResultsContainer");
+    const tabBtns = document.querySelectorAll(".tab-btn");
+
+    function getItemLink(item) { return `${item.folder}/${item.file}`; }
+
+    function getFilteredItems() {
+        let filtered = [...appData.items];
+        if (searchQuery.trim()) {
+            const lowerQ = searchQuery.trim().toLowerCase();
+            filtered = filtered.filter(i => i.title.toLowerCase().includes(lowerQ));
+        }
+        if (activeCategoryFilter) {
+            filtered = filtered.filter(i => i.category === activeCategoryFilter);
+        }
+        return filtered;
+    }
+
+    function renderCategories(container, onClickCategory) {
+        if (!container) return;
+        container.innerHTML = "";
+        appData.categories.forEach(cat => {
+            const card = document.createElement("div");
+            card.className = "category-card";
+            let icon = "fas fa-star-of-life";
+            if (cat === "حمد") icon = "fas fa-praying-hands";
+            else if (cat === "نعت") icon = "fas fa-dove";
+            else if (cat === "منقبت") icon = "fas fa-crown";
+            else if (cat === "سلام") icon = "fas fa-hand-peace";
+            else if (cat === "دعا") icon = "fas fa-hands-praying";
+            card.innerHTML = `<i class="${icon} category-icon"></i><div class="category-name">${cat}</div>`;
+            card.addEventListener("click", () => onClickCategory(cat));
+            container.appendChild(card);
+        });
+    }
+
+    function renderItemsInContainer(container, itemsList) {
+        if (!container) return;
+        container.innerHTML = "";
+        if (itemsList.length === 0) {
+            container.innerHTML = `<div class="no-results"><i class="fas fa-search"></i> کوئی کلام نہیں ملا</div>`;
+            return;
+        }
+        itemsList.forEach(item => {
+            const card = document.createElement("div");
+            card.className = "item-card";
+            const filePath = getItemLink(item);
+            card.innerHTML = `
+                <div class="item-info">
+                    <div class="item-title">${item.title}</div>
+                    <span class="item-category-badge">${item.category}</span>
+                </div>
+                <a href="#" class="read-link" data-path="${filePath}" data-title="${item.title}">
+                    <i class="fas fa-book-open"></i> <span>پڑھیں</span>
+                </a>
+            `;
+            const link = card.querySelector(".read-link");
+            link.addEventListener("click", (e) => {
+                e.preventDefault();
+                // یہاں اصلی HTML فائل کھلے گی (if exists)
+                window.location.href = filePath;
+            });
+            container.appendChild(card);
+        });
+    }
+
+    function updateHomePanel() {
+        renderCategories(categoriesContainerHome, (cat) => {
+            activeCategoryFilter = (activeCategoryFilter === cat) ? null : cat;
+            updateAllPanels();
+            updateFilterChip();
+        });
+        const filtered = getFilteredItems();
+        renderItemsInContainer(itemsContainerHome, filtered);
+    }
+
+    function updateCategoriesPanel() {
+        renderCategories(categoriesFullContainer, (cat) => {
+            setActiveTab("home");
+            activeCategoryFilter = cat;
+            searchQuery = "";
+            searchInput.value = "";
+            updateAllPanels();
+            updateFilterChip();
+        });
+    }
+
+    function updateSearchPanel() {
+        const filtered = getFilteredItems();
+        renderItemsInContainer(searchResultsContainer, filtered);
+    }
+
+    function updateFilterChip() {
+        if (activeCategoryFilter) {
+            filterChipArea.innerHTML = `
+                <div class="active-filter-badge">
+                    <i class="fas fa-filter"></i> فعال زمرہ: ${activeCategoryFilter}
+                    <button class="clear-filter" id="clearCategoryBtn"><i class="fas fa-times-circle"></i> ہٹائیں</button>
+                </div>
+            `;
+            document.getElementById("clearCategoryBtn")?.addEventListener("click", () => {
+                activeCategoryFilter = null;
+                updateAllPanels();
+                updateFilterChip();
+            });
+        } else {
+            filterChipArea.innerHTML = "";
+        }
+    }
+
+    function updateAllPanels() {
+        if (activeTab === "home") updateHomePanel();
+        else if (activeTab === "categories") updateCategoriesPanel();
+        else if (activeTab === "search") updateSearchPanel();
+        updateFilterChip();
+    }
+
+    function setActiveTab(tabId) {
+        activeTab = tabId;
+        homePanel.classList.remove("active-panel");
+        categoriesPanel.classList.remove("active-panel");
+        searchPanel.classList.remove("active-panel");
+        document.querySelector(`#${tabId}Panel`).classList.add("active-panel");
+        tabBtns.forEach(btn => {
+            const t = btn.getAttribute("data-tab");
+            if (t === tabId) btn.classList.add("active");
+            else btn.classList.remove("active");
+        });
+        updateAllPanels();
+    }
+
+    function handleSearch() {
+        searchQuery = searchInput.value;
+        if (activeTab === "home") updateHomePanel();
+        else if (activeTab === "search") updateSearchPanel();
+        updateFilterChip();
+    }
+
+    // Load data.json
+    async function loadData() {
+        try {
+            const response = await fetch("data.json");
+            if (!response.ok) throw new Error("data.json missing");
+            const data = await response.json();
+            appData.categories = data.categories;
+            appData.items = data.items;
+            setActiveTab("home");
+            searchInput.addEventListener("input", handleSearch);
+            tabBtns.forEach(btn => {
+                btn.addEventListener("click", () => setActiveTab(btn.getAttribute("data-tab")));
+            });
+        } catch (err) {
+            document.body.innerHTML += `<div style="background:#ffdddd;padding:1rem;margin:1rem;border-radius:1rem;">⚠️ خطا: data.json فائل موجود نہیں۔ براہِ کرم data.json بنائیں۔</div>`;
+        }
+    }
+    loadData();
+</script>
 </body>
 </html>
